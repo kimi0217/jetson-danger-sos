@@ -1,148 +1,131 @@
 # jetson-danger-sos
 
-Real-time dangerous object detection on NVIDIA Jetson. When a **knife** or **scissors** shows up in the camera feed, the system flashes an LED and sounds a buzzer in **Morse code SOS** (`··· ——— ···`) and shows a warning on an I2C LCD.
-
-Final project for the **Networked Embedded Systems Applications** (網路嵌入式系統應用) course at **National Cheng Kung University (NCKU)**.
-
-> **中文簡介**
-> 本專案為成功大學「網路嵌入式系統應用」課程期末專案。系統在 NVIDIA Jetson 上以 PyTorch YOLOv5s 即時偵測攝影機畫面中的刀具與剪刀，一旦偵測到危險物品，便透過蜂鳴器與 LED 發出摩斯電碼 SOS 警報，並在 I2C LCD 上顯示警告訊息。
+在 NVIDIA Jetson Nano 上以 YOLOv5 即時偵測刀具與剪刀，偵測到危險物品時透過蜂鳴器與 LED 發出摩斯電碼 SOS（`··· ——— ···`），並在 I2C LCD 上顯示警告訊息。
 
 ---
 
-## Tech Stack
+## 專案動機
 
-| Component | Purpose |
-|---|---|
-| [PyTorch](https://pytorch.org/) | Deep learning runtime (CUDA on Jetson) |
-| [YOLOv5](https://github.com/ultralytics/yolov5) (`yolov5s`, v7.0) | COCO-pretrained object detector, loaded via `torch.hub` |
-| [OpenCV](https://opencv.org/) | Camera capture, drawing bounding boxes, JPEG encoding |
-| [Jetson.GPIO](https://github.com/NVIDIA/jetson-gpio) | Buzzer and LED control |
-| [RPLCD](https://github.com/dbrgn/RPLCD) + smbus2 | 16x2 character LCD over I2C |
-| ipywidgets | Live video preview inside Jupyter |
-
-Target classes (COCO indices): `43` = knife, `76` = scissors.
+近年持刀攻擊事件頻傳，公共場所安全備受關注。本系統透過即時影像辨識偵測危險物品，並以畫面、蜂鳴器、LED、LCD 四種回饋即時發出警示，適用於公共場所、幼兒園等安全需求較高、且可能吵雜或視線不佳的環境。
 
 ---
 
-## Hardware
+## Demo
 
-| Part | Notes |
+![偵測結果](docs/images/demo.png)
+
+*偵測結果（刀子、剪刀、尖嘴鉗被辨識為剪刀、裝飾短劍）*
+
+▶ Demo 影片：<https://youtu.be/uQD8-AqvvYM>
+
+---
+
+## 我的角色
+
+本專案為成功大學工程科學系「網路嵌入式系統應用」課程期末專題（2025，第 19 組，3 人小組）。
+
+我負責全部軟體的設計與實作，包含 YOLOv5 偵測流程、OpenCV 影像處理、GPIO/LCD 警示邏輯與系統整合，並撰寫專題報告；組員協助硬體接線。
+
+---
+
+## 技術堆疊
+
+| 元件 | 用途 |
 |---|---|
-| NVIDIA Jetson board | Jetson Nano or similar, with JetPack installed |
-| USB camera | `/dev/video0`, captured at 640×480 |
-| Active buzzer | Driven directly from GPIO |
-| LED + current-limiting resistor | e.g. 220–330 Ω |
-| 16x2 LCD with PCF8574 I2C backpack | I2C address `0x27` |
+| [PyTorch](https://pytorch.org/) | 深度學習執行環境（Jetson 上使用 CUDA） |
+| [YOLOv5](https://github.com/ultralytics/yolov5)（`yolov5s`，v7.0） | COCO 預訓練物件偵測模型，透過 `torch.hub` 載入 |
+| [OpenCV](https://opencv.org/) | 攝影機擷取、繪製偵測框、JPEG 編碼 |
+| [Jetson.GPIO](https://github.com/NVIDIA/jetson-gpio) | 控制蜂鳴器與 LED |
+| [RPLCD](https://github.com/dbrgn/RPLCD) + smbus2 | 透過 I2C 控制 16x2 字元 LCD |
+| ipywidgets | 在 Jupyter 中即時顯示影像 |
 
-### Wiring
+偵測目標類別（COCO 索引）：`43` = knife（刀子）、`76` = scissors（剪刀）。
 
-GPIO numbering uses **`GPIO.BOARD`** (physical pin numbers on the 40-pin header).
+---
 
-| Device | Signal | Jetson pin (BOARD) |
-|---|---|---|
-| Buzzer | + (signal) | **Pin 33** |
-| Buzzer | − | GND (e.g. pin 34) |
-| LED | Anode (via resistor) | **Pin 7** |
-| LED | Cathode | GND (e.g. pin 6) |
-| LCD (PCF8574) | SDA | Pin 3 (I2C bus 1 SDA) |
-| LCD (PCF8574) | SCL | Pin 5 (I2C bus 1 SCL) |
-| LCD (PCF8574) | VCC | Pin 2 or 4 (5V) |
-| LCD (PCF8574) | GND | Pin 6 / 9 / 14 (GND) |
+## 硬體
 
-To confirm the LCD is detected on I2C bus 1 (you should see `27`):
+- 開發板：NVIDIA Jetson Nano（遠端 JupyterLab 開發環境）
+- Webcam
+- 蜂鳴器
+- LED
+- 16x2 LCD（PCF8574 I2C）
+
+### 接線
+
+GPIO 編號採用 **`GPIO.BOARD`**（40-pin 排針的實體腳位編號）。
+
+| 裝置 | 連接 |
+|---|---|
+| 蜂鳴器 | **Pin 33** |
+| LED | **Pin 7** |
+| LCD（PCF8574） | I2C 位址 `0x27`，I2C bus 1 |
+
+---
+
+## 安裝
 
 ```bash
-sudo i2cdetect -y -r 1
+pip install ipywidgets
+pip install seaborn
+pip install RPLCD smbus2
 ```
 
 ---
 
-## Installation
+## 使用方式
 
-1. **Install PyTorch for Jetson.** Use the NVIDIA wheels that match your JetPack version, not PyPI:
-   <https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048>
+1. 依上方接線表接好硬體，並插上 Webcam。
+2. 開啟 Jetson Nano 的遠端 JupyterLab。
 
-2. **Clone the repository and install the dependencies:**
-
-   ```bash
-   git clone https://github.com/<your-username>/jetson-danger-sos.git
-   cd jetson-danger-sos
-   pip install -r requirements.txt
-   ```
-
-3. **Give your user GPIO / I2C access** (or run with `sudo`):
-
-   ```bash
-   sudo groupadd -f -r gpio
-   sudo usermod -aG gpio,i2c $USER
-   # log out and back in for this to take effect
-   ```
-
-The YOLOv5s weights (`yolov5s.pt`) are downloaded automatically by `torch.hub` on first run. They are excluded from git by `.gitignore`.
+3. 開啟 `danger_detection.ipynb`，依序執行各 cell：
+   1. 安裝額外套件（`ipywidgets`、`seaborn`、`RPLCD`、`smbus2`）
+   2. 在 `cuda:0` 上載入 YOLOv5s 模型
+   3. 初始化 LCD 與 GPIO，並啟動偵測迴圈
+4. 攝影機畫面會即時顯示在 notebook 中，將刀子或剪刀放到鏡頭前即可觸發警報。
+5. 要停止程式時，點選 **Kernel → Interrupt Kernel**。`finally` 區塊會釋放攝影機、將 GPIO 腳位設為低電位、執行 `GPIO.cleanup()`，並在 LCD 顯示 `System Off`。
 
 ---
 
-## Usage
-
-1. Wire up the hardware as shown above and plug in the USB camera.
-2. Start Jupyter on the Jetson:
-
-   ```bash
-   jupyter notebook
-   ```
-
-3. Open `danger_detection.ipynb` and run the cells in order:
-   1. Install the extra packages (`ipywidgets`, `seaborn`, `RPLCD`, `smbus2`)
-   2. Load the YOLOv5s model on `cuda:0`
-   3. Set up the LCD and GPIO, then start the detection loop
-4. The live camera feed shows up in the notebook. Hold up a knife or scissors to trigger the alarm.
-5. To stop, use **Kernel → Interrupt**. The `finally` block releases the camera, sets the GPIO pins low, runs `GPIO.cleanup()`, and shows `System Off` on the LCD.
-
----
-
-## How It Works
+## 系統流程
 
 ```
-┌────────────┐   frame    ┌──────────────┐  detections  ┌──────────────────────┐
-│ USB Camera │ ─────────▶ │ YOLOv5s (GPU)│ ───────────▶ │ class ∈ {knife,      │
-└────────────┘  640×480   └──────────────┘              │ scissors} & conf>0.1?│
+┌────────────┐   影像     ┌──────────────┐   偵測結果   ┌──────────────────────┐
+│   Webcam   │ ─────────▶ │ YOLOv5s (GPU)│ ───────────▶ │ 類別 ∈ {knife,       │
+└────────────┘  640×480   └──────────────┘              │ scissors} 且 conf>0.1│
       ▲                                                 └─────────┬────────────┘
-      │                                              no ◀─────────┤ yes
-      │                                    (show frame)           ▼
+      │                                              否 ◀─────────┤ 是
+      │                                    （更新畫面）           ▼
       │                                         ┌───────────────────────────────┐
-      │                                         │ 1. Draw red box + "SOS !!!"   │
-      │                                         │ 2. LCD: "Danger Detected!"    │
+      │                                         │ 1. 畫紅框並顯示 "SOS !!!"     │
+      │                                         │ 2. LCD："Danger Detected!"    │
       │                                         │         "Status: SOS"         │
-      │                                         │ 3. Buzzer + LED: ··· ——— ···  │
-      │                                         │ 4. Cool down 3 s, clear LCD   │
-      │                                         │ 5. Flush 5 stale frames       │
+      │                                         │ 3. 蜂鳴器 + LED：··· ——— ···  │
+      │                                         │ 4. 冷卻 3 秒，清除 LCD        │
+      │                                         │ 5. 丟棄 5 張緩衝畫面          │
       └──────────────────────────────────────── └───────────────────────────────┘
 ```
 
-1. **Capture.** OpenCV reads frames from camera 0 at 640×480 and converts them from BGR to RGB.
-2. **Detect.** YOLOv5s runs inference on the GPU. Each detection is checked against `TARGET_CLASSES = [43, 76]` with a confidence threshold of `0.1`.
-3. **Alert.** On a hit, the frame is annotated and pushed to the notebook widget, the LCD shows the warning, and `sos()` drives the buzzer and LED together:
-   - Time unit `UNIT = 0.2 s`
-   - Dot = 1 unit on, dash = 3 units on, 1 unit off between symbols
-   - 2 extra units of gap between letters (S · O · S)
-4. **Recover.** After a 3-second cooldown the LCD is cleared. Five buffered frames are thrown away so the next inference runs on a fresh image, and then the loop continues.
-5. **Shutdown.** On interrupt, all hardware resources are released cleanly.
+1. **擷取：** OpenCV 從攝影機 0 讀取 640×480 的影像，並由 BGR 轉為 RGB。
+2. **偵測：** YOLOv5s 在 GPU 上推論，逐一比對偵測結果是否屬於 `TARGET_CLASSES = [43, 76]`，且信心值大於 `0.1`。
+3. **警示：** 偵測到危險物品時，在畫面上標註並更新到 notebook，LCD 顯示警告訊息，`sos()` 同時驅動蜂鳴器與 LED：
+   - 時間單位 `UNIT = 0.2 s`
+   - 點（dot）亮 1 個單位、劃（dash）亮 3 個單位，符號之間間隔 1 個單位
+   - 字母之間（S · O · S）額外間隔 2 個單位
+4. **恢復：** 冷卻 3 秒後清除 LCD，並丟棄 5 張緩衝畫面，讓下一次推論使用最新影像，接著回到迴圈。
+5. **關閉：** 中斷程式時，所有硬體資源都會被正確釋放。
 
 ---
 
-## Project Structure
+## 專案結構
 
 ```
 jetson-danger-sos/
-├── danger_detection.ipynb   # Main notebook: model loading, hardware setup, detection loop
-├── requirements.txt         # Python dependencies
+├── danger_detection.ipynb   # 主程式：載入模型、硬體初始化、偵測迴圈
+├── docs/
+│   └── images/
+│       └── demo.png         # Demo 偵測結果截圖
 ├── .gitignore
 └── README.md
 ```
 
----
-
-## Acknowledgements
-
-- [Ultralytics YOLOv5](https://github.com/ultralytics/yolov5)
-- NCKU course: Networked Embedded Systems Applications (網路嵌入式系統應用)
