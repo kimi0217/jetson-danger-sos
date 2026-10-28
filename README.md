@@ -4,7 +4,7 @@
 
 ## 專案動機
 
-近年持刀攻擊事件頻傳，公共場所安全備受關注。本系統透過即時影像辨識偵測危險物品，並以畫面、蜂鳴器、LED、LCD 四種回饋即時發出警示，適用於公共場所、幼兒園等安全需求較高、且可能吵雜或視線不佳的環境。
+近年持刀攻擊事件頻傳，公共場所安全備受關注。本系統透過即時影像辨識偵測危險物品，並以畫面、蜂鳴器、LED、LCD 四種回饋即時發出警示，適用於公共場所、幼兒園等安全需求較高，且可能吵雜或視線不佳的環境。
 
 ## Demo
 
@@ -24,20 +24,12 @@
 |---|---|
 | [PyTorch](https://pytorch.org/) | 深度學習執行環境（Jetson 上使用 CUDA） |
 | [YOLOv5](https://github.com/ultralytics/yolov5)（`yolov5s`，v7.0） | COCO 預訓練物件偵測模型，透過 `torch.hub` 載入 |
-| [OpenCV](https://opencv.org/) | 攝影機擷取、繪製偵測框、JPEG 編碼 |
+| [OpenCV](https://opencv.org/) | 攝影機擷取、繪製偵測框 |
 | [Jetson.GPIO](https://github.com/NVIDIA/jetson-gpio) | 控制蜂鳴器與 LED |
 | [RPLCD](https://github.com/dbrgn/RPLCD) + smbus2 | 透過 I2C 控制 16x2 字元 LCD |
 | ipywidgets | 在 Jupyter 中即時顯示影像 |
 
 偵測目標類別（COCO 索引）：`43` = knife（刀子）、`76` = scissors（剪刀）。
-
-## 硬體
-
-- 開發板：NVIDIA Jetson Nano（遠端 JupyterLab 開發環境）
-- Webcam
-- 蜂鳴器
-- LED
-- 16x2 LCD（PCF8574 I2C）
 
 ## 系統流程
 
